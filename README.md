@@ -3,6 +3,19 @@
 
 ## 일대일 
 
+주 테이블이나 대상 테이블 둘 중 어느 곳이나 외래 키를 참조할 수 있음.
+
+### 일대일 단방향
+다대일 단방향과 비슷하다.
+외래 키를 가지는 쪽에 ``@OneToOne`` 대상 테이블에 ``mappedBy``
+
+### 대상 테이블에 외래 키
+JPA에서는 일대일 방향 관계에서 대상 테이블에 외래 키가 있는 경우를 지원하지 않는다.
+ => 연관관계를 수정하거나, 양방향으로 만들고 대상 테이블 엔티티를 연관관계의 주인으로 설정해야함. 
+     ex) 주 테이블 ``@OneToOne(mappedBy="")``, 대상 테이블 ``@OneToOne @JoinColumn``
+
+
+
 ### ``@PrimaryKeyJoinColumn``
 User -> Address 단방향 공유 기본키 일대일 연관관계 매핑
   
@@ -46,9 +59,170 @@ FK 값이 고유해야 할 경우 ``unique=true`` 설정으로 고유한 값을 
 일대다 양방향 매핑은 bag이 가장 효율적인 특성을 가지고 있음.
 List를 사용할 경우, 단방향 매핑이 됨.
 
+### 다대일 
+INSERT문 한 번에 엔티티 저장과 연관관계를 처리할 수 있음(FK를 참조하고 있기 때문).
+
+### 일대다
+일대다 단방향 매핑을 사용할 경우, INSERT문 한 번으로 엔티티의 저장과 연관관계 처리를 끝내지 못하고 1:N 참조를 확인해서 FK를 업데이트 해주어야한다. 
+ -> 1 -> N UPDATE
+ -> 일대다 단방향 매핑 대신 다대일 단방향 매핑을 사용해야함.
+
+#### mappedBy
+
+``@JoinColumn`` 애너테이션이 있는 쪽이 연관관계의 주인.
+mappedBy가 있는 쪽은 매핑을 참조하는 거울이다.
+``@ManyToOne``: @JoinColumn
+``@OneToMany``: mappedBy 
+
+
 
 
 ## 다대다
+
+### DB
+관계형 DB는 정규화된 테이블 2개로 다대다를 표현할 수 없으므로 연결 테이블을 사용한다.
+ => 양 측 모두 FK를 넣을 수 있는 컬럼은 한개이기 때문.
+양 측 테이블의 ID들이 담긴 연결 테이블을 사용한다.
+
+### 객체
+객체는 서로 컬렉션을 참조하는 방식으로 다대다 매핑이 가능하다.``@ManyToMany``
+엔티티는 연결 테이블을 신경쓰지 않아도 된다.
+연관관계 매핑 시 연결 테이블에 INSERT가 영속 전이
+엔티티 컬렉션을 통한 조회 시, 연결 테이블과 조회 대상을 조인하는 쿼리 발생
+
+
+
+### 단방향
+다대다 단방향에서는 ``@JoinColumn``이 아닌, ``@JoinTable``을 사용한다.
+ => 컬럼에 FK를 매핑할 수 없어서 연결 테이블을 사용해야한다.
+
+- ``@JoinTable.name``: 연결 테이블을 지정
+- ``@JoinTable.joinColumns``: 매핑할 조인 컬럼 정보를 지정
+예를 들어 Customer에 @JoinTable을 사용했으면 joinColumns속성은 CUSTOMER_ID로 지정
+@JoinTable.inverseJoinColumns: 반대 방향으로 매핑할 조인 컬럼 정보를 지정
+Address에 @JoinTable을 사용했으면 ADDRESS_ID로 지정
+```java
+    @ManyToMany(cascade = {CascadeType.PERSIST, })
+    @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)
+    @JoinTable(name = "TB_CUSTOMER_ADDRESS",
+               joinColumns = @JoinColumn(name = "customer_id", referencedColumnName = "id"),
+               inverseJoinColumns = @JoinColumn(name = "address_id", referencedColumnName = "id"))
+    private Set<Address> addresses = new HashSet<>();
+```
+
+
+### 양방향
+역방향에도 @ManyToMany 사용
+연관관계의 주인이 아닌 쪽에 mappedBy 속성 사용
+연관관계의 주인 쪽은 단방향과 마찬가지로 @JoinTable 사용하면 됨
+
+
+```java
+@Entity
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "dtype")
+@Getter @Setter
+public abstract class Item {   
+
+ @Id
+ @GeneratedValue
+ @Column(name = "item_id")
+ private long id;
+
+ ...
+ @ManyToMany(mappedBy = "items")
+ private List<Category> categories = new ArrayList<>();
+ ...
+
+
+}
+
+@Entity
+@Getter @Setter
+public class Category {
+
+ ...
+ @ManyToMany
+ @JoinTable(name = "category_item",
+         joinColumns = @JoinColumn(name = "category_id"),
+         inverseJoinColumns = @JoinColumn(name = "item_id")   //catego줌ry_item 테이블에 item쪽으로 들어가는 값을 매핑해
+ )
+ private List<Item> items = new ArrayList<>();
+...
+}
+```
+
+다대일 양방향과 마찬가지로 연관관계 편의 메서드를 사용하는 것이 유리
+=> 연관관계 편의 메서드?
+
+
+### 링크 테이블이 없는 다대다
+우회는 가능하나, 한 쪽은 읽기 전용으로만 사용이 가능하다.
+```java
+User user = new User();
+
+Address address = new Address();
+
+user.setAddress(address);
+
+address.setUser(user);
+
+userRepository.save(user);
+
+addressRepository.save(address);
+```
+
+
+
+
+
+
+### 다대다 매핑의 한계와 연결 엔티티
+실무에서 사용하기에 한계가 있다.
+
+- 제어 한계: 연결 테이블이 숨겨져 있으므로 예상하지 못한 쿼리가 생길 수 있음
+- 확장 한계: 
+  - 연결 테이블에 추가 정보가 들어가면 @ManyToMany사용 불가능 ex)주문 수량, 날짜, 시간 등의 정보 추가 
+  - 추가한 컬럼들을 엔티티에 매핑할 수 없음
+
+  - 확장 한계 극복:
+    - 연결 테이블을 아예 엔티티로 만드는 방법
+ 
+연결 테이블처럼 MEMBER_ID와 PRODUCT_ID를 복합키로 하는 기본 키를 사용하려면 @IdClass를 사용해야 함.
+```java
+// IdClass
+public class MemberProductId implements Serializable {
+ private Long member;
+ private Long product;
+
+ // equals and hashcode...
+}
+
+@Entity
+@IdClass(MemberProductId.class)
+public class MemberProduct {
+    // 회원상품(MemberProduct)엔티티에 회원, 상품을 각각 다대일 관계로 매핑
+    @Id
+    @ManyToOne
+    @JoinColumn(name = "MEMBER_ID")
+    private Member member;
+
+    @Id
+    @ManyToOne
+    @JoinColumn(name = "PRODUCT_ID")
+    private Product product;
+
+    ...
+}
+
+```
+#### @IdClass, @EmbeddedId
+복합키로 사용할 식별자 클래스를 만들어서 매핑해준다.
+ - Serializable을 구현해야한다.
+ - equals, hashcode를 오버라이딩 해야한다.
+ - 기본 생성자가 있어야한다.
+ - 접근 제어가 public이어야 한다.(리플렉션)
+
 
 
 
