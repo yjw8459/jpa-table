@@ -10,10 +10,10 @@ import java.util.Set;
 @Entity
 @Getter
 @Setter
-public class Customer {
+public class Customer  extends BaseTime{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public Long id;
+    private Long id;
 
     @Column
     private String name;
@@ -25,6 +25,6 @@ public class Customer {
     private RegistrationState state;
 
     @OneToMany(mappedBy = "customer")
-    private Set<Dentist> dentist;
+    private Set<Dentist> dentists;
 
 }

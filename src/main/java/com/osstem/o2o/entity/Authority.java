@@ -10,11 +10,6 @@ import java.util.Set;
 @Entity
 @Getter @Setter
 public class Authority {
-
-    @OneToMany(mappedBy = "authority")
-    private Set<EmployeeAuthority> employeeAuthority;
-
     @Id
     private Role name;
-
 }

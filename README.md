@@ -145,7 +145,7 @@ public class Category {
  @ManyToMany
  @JoinTable(name = "category_item",
          joinColumns = @JoinColumn(name = "category_id"),
-         inverseJoinColumns = @JoinColumn(name = "item_id")   //catego줌ry_item 테이블에 item쪽으로 들어가는 값을 매핑해
+         inverseJoinColumns = @JoinColumn(name = "item_id")   //category_item 테이블에 item쪽으로 들어가는 값을 매핑해줌
  )
  private List<Item> items = new ArrayList<>();
 ...
@@ -251,4 +251,159 @@ userRepository.save(john)
 ```
 외래키 조인의 경우 양방향 연관관계 매핑이 간소화된다.
 
-3. 
+@JoinColumn
+https://ksh-coding.tistory.com/105
+
+2-2-2. OneToMany 단방향 : Target Entity(Table)에 FK 위치
+Copy
+public class Line {
+
+	...
+    
+    @OneToMany
+    @JoinColumn
+    private List<Station> stations = new ArrayList<>();
+}
+이렇게 @OneToMany 단방향에 @JoinColumn이 붙어있으면,
+
+FK는 Target Entity(Station)에 위치한다.
+
+이때, 조심해야할 점은 @JoinColumn에서 FK의 name을 지정해주지 않으면 기본값이 설정되는데
+
+기본 값으로 참조하는 엔티티(Line)의 필드명(stations) + "_" + 참조된 엔티티(Station)의 PK(id)로 지정되므로
+
+위의 예시에서는 FK의 이름으로 stations_id가 지정된다.
+
+
+
+따라서 @OneToMany 단방향에 @JoinColumn을 사용한다면, name 속성으로 올바른 FK 이름을 지정해야한다.
+
+(성능 이슈 및 불편함이 있어서 @OneToMany 단방향은 잘 사용하지 않는다.)
+
+
+
+
+
+## GPT
+
+JPA (Java Persistence API)에서 다대다(N
+) 연관관계는 두 개의 엔티티가 서로 다수의 인스턴스를 가질 수 있는 관계를 의미합니다. 예를 들어, 학생과 강의 관계를 생각해보면, 한 학생이 여러 강의를 수강할 수 있고, 한 강의에도 여러 학생이 수강할 수 있습니다. 이와 같은 관계를 JPA에서 어떻게 모델링하는지에 대해 자세히 설명하겠습니다.
+
+다대다 연관관계의 기본 개념
+다대다 관계:
+두 엔티티 간의 관계가 다대다로 설정됩니다.
+각 엔티티의 인스턴스가 서로 여러 개의 인스턴스와 연결됩니다.
+다대다 연관관계 모델링
+JPA에서 다대다 연관관계를 매핑하려면, 중간에 연관관계를 표현하는 테이블(조인 테이블)을 사용해야 합니다. 이 테이블은 두 엔티티의 기본 키를 외래 키로 사용하여 다대다 관계를 표현합니다.
+
+1. @ManyToMany 애너테이션
+정의: @ManyToMany 애너테이션을 사용하여 다대다 관계를 설정합니다.
+조인 테이블: JPA는 자동으로 조인 테이블을 생성합니다. 이 조인 테이블은 두 엔티티의 외래 키를 포함합니다.
+2. 예제 코드
+예제 시나리오: Student와 Course 엔티티 간의 다대다 관계를 모델링합니다.
+
+Student.java
+
+java
+코드 복사
+import javax.persistence.*;
+import java.util.Set;
+
+@Entity
+public class Student {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    @ManyToMany
+    @JoinTable(
+        name = "student_course", // 조인 테이블 이름
+        joinColumns = @JoinColumn(name = "student_id"), // 이 엔티티의 외래 키
+        inverseJoinColumns = @JoinColumn(name = "course_id") // 상대 엔티티의 외래 키
+    )
+    private Set<Course> courses;
+
+    // getters and setters
+}
+Course.java
+
+java
+코드 복사
+import javax.persistence.*;
+import java.util.Set;
+
+@Entity
+public class Course {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String title;
+
+    @ManyToMany(mappedBy = "courses") // 매핑된 필드의 이름을 명시
+    private Set<Student> students;
+
+    // getters and setters
+}
+@JoinTable 애너테이션
+name: 조인 테이블의 이름을 지정합니다.
+joinColumns: 현재 엔티티의 외래 키를 지정합니다.
+inverseJoinColumns: 상대 엔티티의 외래 키를 지정합니다.
+주의사항
+기본 키 설정: 조인 테이블의 기본 키는 보통 두 엔티티의 외래 키로 구성됩니다. JPA는 이 조인 테이블의 기본 키를 자동으로 설정합니다.
+중복 데이터: 중복된 관계를 피하기 위해 적절한 중복 방지 로직을 구현해야 할 수 있습니다.
+성능: 다대다 연관관계는 조인 테이블을 통해 많은 양의 데이터와 연관될 수 있으므로 성능을 고려해야 합니다. 예를 들어, 대량의 데이터를 다룰 때 쿼리 최적화가 필요할 수 있습니다.
+대안
+JPA에서 다대다 관계를 직접적으로 매핑하기보다는, 다대일 및 일대다 관계를 사용하여 중간 엔티티를 통해 간접적으로 다대다 관계를 표현하는 것이 일반적입니다. 이를 통해 더 세밀한 제어와 확장성을 제공할 수 있습니다.
+
+예제: 중간 엔티티를 사용한 다대다 관계
+
+StudentCourse.java (중간 엔티티)
+
+java
+코드 복사
+import javax.persistence.*;
+
+@Entity
+public class StudentCourse {
+    @EmbeddedId
+    private StudentCourseId id = new StudentCourseId();
+
+    @ManyToOne
+    @MapsId("studentId")
+    @JoinColumn(name = "student_id")
+    private Student student;
+
+    @ManyToOne
+    @MapsId("courseId")
+    @JoinColumn(name = "course_id")
+    private Course course;
+
+    // getters and setters
+}
+StudentCourseId.java (복합 키 클래스)
+
+java
+코드 복사
+import java.io.Serializable;
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
+
+@Embeddable
+public class StudentCourseId implements Serializable {
+    @Column(name = "student_id")
+    private Long studentId;
+
+    @Column(name = "course_id")
+    private Long courseId;
+
+    // equals and hashCode methods
+}
+이 방법은 Student와 Course 간의 관계를 StudentCourse라는 중간 엔티티를 통해 모델링합니다. 이 방식은 추가적인 정보를 조인 테이블에 저장할 수 있는 장점이 있습니다.
+
+이와 같이 JPA에서는 다대다 관계를 다양한 방식으로 모델링할 수 있으며, 필요에 따라 적절한 방법을 선택하여 사용하면 됩니다.
+
+
+

@@ -11,7 +11,7 @@ import lombok.Setter;
 public class Dentist extends BaseTime{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    public Long id;
+    private Long id;
 
     @Column
     private String name;
@@ -29,7 +29,7 @@ public class Dentist extends BaseTime{
     private String zipcode;
 
     @Column
-    private String group;
+    private String groups;
 
     @ManyToOne
     @JoinColumn(name = "customer_id")
